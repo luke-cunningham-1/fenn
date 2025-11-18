@@ -67,7 +67,7 @@ class Logger():
             config=config,
         )
 
-    def _flatten_dict(self, d, parent_key='', sep='_'):
+    def _flatten_dict(self, d, parent_key='', sep='/'):
         """Flatten nested dictionary."""
         items = []
         for k, v in d.items():

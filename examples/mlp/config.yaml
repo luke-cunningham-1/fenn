@@ -2,7 +2,7 @@ project: mlp
 
 # Dataset settings
 dataset:
-  dir: dataset/MNIST/data.csv
+  dir: /home/blkdmr/projects/deepl-starter/dataset/mnist.csv
 
 # Training configuration
 training:

@@ -1,8 +1,7 @@
 import traceback
-import os
 
 import pandas as pd
-import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,9 +11,9 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, classification_report
 
-from deepl.utils import set_seed
-from deepl.utils.logger import Logger
-from deepl.utils.args import ArgParser
+from ravel.utils import set_seed
+from ravel.utils.logger import Logger
+from ravel.utils.args import ArgParser
 
 class CustomMLP(nn.Module):
 
