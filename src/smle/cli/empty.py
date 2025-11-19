@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-SMLE_EMPTY_CONFIG_TEMPLATE = """\
+CONFIG_TEMPLATE = """\
 project: example
 
 # Training configuration
@@ -25,27 +25,24 @@ logger:
 #   entity: [your_wandb_account]
 """
 
-EMPTY_SCRIPT_TEMPLATE = """\
+SCRIPT_TEMPLATE = """\
 from smle.utils import set_seed
-from smle import smle
+from smle import entrypoint
 
-
-@smle
+@entrypoint
 def main(args):
-
 
     set_seed(args["training"]["seed"])
 
-
-    # TODO: add your code here
-
-
+    # ========================================
+    # TODO: ADD YOUR CODE HERE
+    # ========================================
 
 if __name__ == "__main__":
     main()
 """
 
-def cmd_init(args: argparse.Namespace) -> None:
+def init(args: argparse.Namespace) -> None:
     root = Path(args.path).resolve()
 
 
@@ -66,45 +63,13 @@ def cmd_init(args: argparse.Namespace) -> None:
     config_path = root / "smle.yaml"
     if config_path.exists() and not args.force:
         raise SystemExit("smle.yaml already exists; use --force to overwrite.")
-    config_path.write_text(SMLE_EMPTY_CONFIG_TEMPLATE)
+    config_path.write_text(CONFIG_TEMPLATE)
 
 
     # Example training script
     train_path = root / "main.py"
     if not train_path.exists() or args.force:
-        train_path.write_text(EMPTY_SCRIPT_TEMPLATE)
+        train_path.write_text(SCRIPT_TEMPLATE)
 
 
     print(f"Initialized smle project in {root}")
-
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="smle")
-    subparsers = parser.add_subparsers(dest="command")
-
-
-    # init subcommand
-    p_init = subparsers.add_parser("init", help="Initialize an empty smle project")
-    p_init.add_argument(
-        "path",
-        nargs="?",
-        default=".",
-        help="Target directory (default: current directory)",
-    )
-    p_init.add_argument(
-        "--force",
-        action="store_true",
-        help="Overwrite existing files if needed",
-    )
-    p_init.set_defaults(func=cmd_init)
-
-    return parser
-
-
-def main(argv=None):
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    if hasattr(args, "func"):
-        args.func(args)
-    else:
-        parser.print_help()

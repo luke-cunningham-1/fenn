@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smle"
-version = "0.0.1.dev4"
+version = "0.0.1.dev7"
 description = "Simple Machine Learning Enviroment - a tiny utilities framework for ML/DL."
 
 authors = [

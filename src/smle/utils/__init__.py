@@ -5,7 +5,7 @@ try:
     import torch
 except ImportError as e:
     raise RuntimeError(
-        "Torch is required for this feature. "
+        "Torch is required by smle."
         "Install it yourself (GPU/CPU) or use 'pip install smle[torch]'."
     ) from e
 
