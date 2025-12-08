@@ -65,3 +65,7 @@ fenn = "fenn.cli:main"
 "Documentation" = "https://pyfenn.org"
 "Source Code" = "https://github.com/blkdmr/fenn"
 "Bug Tracker" = "https://github.com/blkdmr/fenn/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["src/tests"]
+norecursedirs = ["tests", "venv", ".venv", "__pycache__", "*.egg"]
