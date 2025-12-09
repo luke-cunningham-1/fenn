@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Literal
 
-from fenn.vision.vision_utils import detect_format
+from fenn.vision.vision_utils import detect_format, normalize_color_mode
 
 
 def _gray_to_rgb(
@@ -196,15 +196,8 @@ def ensure_color_mode(array: np.ndarray, mode: str = "RGB") -> np.ndarray:
     if not isinstance(array, np.ndarray):
         raise TypeError(f"Expected numpy.ndarray, got {type(array)}")
 
-    # Validate target mode    
-    target_mode = mode.upper()
-    supported_modes = {"RGB", "RGBA", "L", "GRAY"}
-    if target_mode not in supported_modes:
-        raise ValueError(
-            f"Unsupported mode '{target_mode}'. Supported modes: {supported_modes}"
-        )
-    if target_mode == "L":
-        target_mode = "GRAY"
+    # Validate and normalize target mode using utility function
+    target_mode = normalize_color_mode(mode)
 
     format_info = detect_format(array)
     is_grayscale = format_info["is_grayscale"]

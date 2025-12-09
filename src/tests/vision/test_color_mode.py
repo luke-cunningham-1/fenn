@@ -154,7 +154,7 @@ class TestEnsureColorMode:
         with pytest.raises(ValueError) as exc_info:
             ensure_color_mode(rgb, mode="INVALID")
         
-        assert "Unsupported mode" in str(exc_info.value)
+        assert "Unsupported color mode" in str(exc_info.value)
 
     def test_non_numpy_array_raises_error(self):
         """Test that non-numpy array raises TypeError."""

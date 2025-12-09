@@ -78,3 +78,32 @@ def detect_format(array: np.ndarray) -> FormatInfo:
             f"Expected 3D (N, H, W) or 4D (N, H, W, C) / (N, C, H, W), got shape {shape}"
         )
 
+
+def normalize_color_mode(mode: str) -> str:
+    """
+    Normalize color mode names.
+    
+    Args:
+        mode: Color mode string
+    
+    Returns:
+        Normalized color mode string in uppercase (e.g., 'RGB', 'RGBA', 'GRAY')
+    
+    Raises:
+        ValueError: If the mode is not supported. Supported modes are:
+            'RGB', 'RGBA', 'GRAY', 'L' (case-insensitive)
+    """
+    mode_upper = mode.upper()
+    
+    supported_modes = {"RGB", "RGBA", "GRAY", "L"}
+    
+    if mode_upper not in supported_modes:
+        raise ValueError(
+            f"Unsupported color mode '{mode}'. "
+            f"Supported modes: {', '.join(sorted(supported_modes))}"
+        )
+
+    if mode_upper == 'L':
+        return 'GRAY'
+    
+    return mode_upper
