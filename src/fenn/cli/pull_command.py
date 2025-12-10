@@ -8,15 +8,16 @@ from pathlib import Path
 import requests
 from colorama import Fore, Style
 
-TEMPLATES_REPO = "pyfenn/templates"
-REPO_NAME = "templates"
+TEMPLATES_REPO = "pyfenn/fenn"
+REPO_NAME = "fenn"
+TEMPLATES_DIR = "templates"
 GITHUB_API_BASE = "https://api.github.com"
 GITHUB_ARCHIVE_BASE = "https://github.com"
 
 def execute(args: argparse.Namespace) -> None:
     """
     Execute the fenn pull command to download a template from GitHub.
-    
+
     Args:
         args: Parsed command-line arguments containing:
             - template: Name of the template to download (optional if --list is used)
@@ -84,7 +85,7 @@ def _download_template(template_name: str, target_dir: Path, force: bool) -> Non
         TemplateError: If template structure is invalid
     """
     # Check if template exists using GitHub API
-    template_path = f"repos/{TEMPLATES_REPO}/contents/{template_name}"
+    template_path = f"repos/{TEMPLATES_REPO}/contents/{TEMPLATES_DIR}/{template_name}"
     api_url = f"{GITHUB_API_BASE}/{template_path}"
 
     try:
@@ -119,9 +120,9 @@ def _download_template(template_name: str, target_dir: Path, force: bool) -> Non
 
             with zipfile.ZipFile(tmp_file.name, 'r') as zip_ref:
                 # Find all files in the template directory
-                template_prefix = f"{REPO_NAME}-main/{template_name}/"
+                template_prefix = f"{REPO_NAME}-main/{TEMPLATES_DIR}/{template_name}/"
                 template_files = [
-                    f for f in zip_ref.namelist() 
+                    f for f in zip_ref.namelist()
                     if f.startswith(template_prefix)
                 ]
 
@@ -168,11 +169,11 @@ class TemplateError(Exception):
 def _list_templates() -> None:
     """
     List all available template directories in the templates repository.
-    
+
     Raises:
         NetworkError: If network request fails
     """
-    api_url = f"{GITHUB_API_BASE}/repos/{TEMPLATES_REPO}/contents"
+    api_url = f"{GITHUB_API_BASE}/repos/{TEMPLATES_REPO}/contents/{TEMPLATES_DIR}"
 
     try:
         response = requests.get(api_url, timeout=10)
@@ -183,7 +184,7 @@ def _list_templates() -> None:
     contents = response.json()
 
     templates = [
-        item["name"] for item in contents 
+        item["name"] for item in contents
         if item.get("type") == "dir"
     ]
 
