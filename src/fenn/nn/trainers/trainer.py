@@ -4,6 +4,7 @@ import torch
 from fenn.logging import Logger
 
 class Trainer:
+    """The base Trainer class"""
 
     def __init__(self,
                  model,
@@ -46,18 +47,10 @@ class Trainer:
 
             mean_loss = total_loss / n_batches
             print(f"Epoch {epoch}. Mean Loss: {mean_loss:.4f}")
+
         #save_file = export_dir / "model.pth"
         #self._model.cpu()
         #torch.save(self._model.state_dict(), save_file)
         #self._model.to(self._device)
 
         return self._model
-
-    def _move_batch(self, batch):
-        if isinstance(batch, (list, tuple)):
-            return [self._move_batch(b) for b in batch]
-        if isinstance(batch, dict):
-            return {k: self._move_batch(v) for k, v in batch.items()}
-        if torch.is_tensor(batch):
-            return batch.to(self._device)
-        return batch

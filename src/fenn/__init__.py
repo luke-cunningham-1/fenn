@@ -1,1 +1,1 @@
-﻿from fenn.base import Fenn # base app
+﻿from fenn.core import Fenn
