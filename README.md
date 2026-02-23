@@ -83,9 +83,9 @@ train:
 Use the `@app.entrypoint` decorator. Your configuration variables are automatically passed via `args`.
 
 ```python
-from fenn import FENN
+from fenn import Fenn
 
-app = FENN()
+app = Fenn()
 
 @app.entrypoint
 def main(args):
@@ -101,7 +101,7 @@ if __name__ == "__main__":
 By default, fenn will look for a configuration file named `fenn.yaml` in the current directory. If you would like to use a different name, a different location, or have multiple configuration files for different configurations, you can call `set_config_file()` and update the path or the name of your configuration file. You must assign the filename before calling `run()`.
 
 ```python
-app = FENN()
+app = Fenn()
 app.set_config_file("my_file.yaml")
 ...
 app.run()

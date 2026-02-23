@@ -2,14 +2,14 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fenn.args import Parser
+from fenn.logging.backends.logging import LoggingBackend
+from fenn.logging.backends.tensorboard import TensorboardBackend
+from fenn.logging.backends.wandb import WandbBackend
 from fenn.secrets.keystore import KeyStore
 
-from fenn.logging.backends.logging import LoggingBackend
-from fenn.logging.backends.wandb import WandbBackend
-from fenn.logging.backends.tensorboard import TensorboardBackend
 
 class Logger:
-    """Singleton logging system for FENN (facade over multiple backends)."""
+    """Singleton logging system for Fenn (facade over multiple backends)."""
 
     _instance: Optional["Logger"] = None
 
