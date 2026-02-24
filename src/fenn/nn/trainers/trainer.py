@@ -40,9 +40,12 @@ class Trainer:
         self._best_loss = float('inf')
 
         # create the checkpoint directory if it doesn't exist and is enabled
-        if self._checkpoint_dir and checkpoint_epochs is not None:
+        if self._checkpoint_dir and (self._checkpoint_epochs is not None or self._save_best):
             self._checkpoint_dir.mkdir(parents=True, exist_ok=True)
-            self._logger.system_info(f"Checkpointing enabled. Checkpoints will be saved to {self._checkpoint_dir} every {self._checkpoint_epochs} epochs.")
+            if self._checkpoint_epochs is not None:
+                self._logger.system_info(f"Checkpointing enabled. Checkpoints will be saved to {self._checkpoint_dir} every {self._checkpoint_epochs} epochs.")
+            if self._save_best:
+                self._logger.system_info(f"Best model checkpointing enabled. Best model will be saved to {self._checkpoint_dir}.")
 
 
     def _should_save_checkpoint(self, epoch: int):
@@ -81,6 +84,7 @@ class Trainer:
             'model_state_dict': self._model.state_dict(),
             'optimizer_state_dict': self._optimizer.state_dict(),
             'loss': loss,
+            'best_loss': self._best_loss
         }
 
         if not is_best:
@@ -95,9 +99,9 @@ class Trainer:
             self._logger.system_info(f"Best model checkpoint saved to {best_filepath} with loss {loss:.4f}.")
 
 
-    def fit(self, train_loader):
+    def fit(self, train_loader, start_epoch: int = 0):
 
-        for epoch in range(self._epochs):
+        for epoch in range(start_epoch, self._epochs):
             self._logger.system_info(f"Epoch {epoch} started.")
 
             total_loss = 0.0
@@ -162,6 +166,7 @@ class Trainer:
         self._optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
         loss = checkpoint.get('loss', float('inf'))
+        self._best_loss = checkpoint.get('best_loss', float('inf'))
 
         self._logger.system_info(f"Checkpoint loaded from {checkpoint_path}. Resuming from epoch {epoch} with loss {loss:.4f}.")
         return epoch
