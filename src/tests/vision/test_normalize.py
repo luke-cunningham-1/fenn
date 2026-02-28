@@ -268,16 +268,28 @@ class TestNormalizeBatch:
         assert normalized.dtype == np.float64
         assert normalized.shape == array.shape
 
-    def test_normalize_imagenet_stats_rgba_preserves_alpha(self):
-        """Test that ImageNet stats normalization preserves alpha channel for RGBA."""
+    def test_normalize_imagenet_stats_rgba_scales_alpha(self):
+        """Test that ImageNet stats normalization scales alpha channel to [0, 1] for RGBA."""
+        # Test with float array (alpha already in [0, 1])
         array = np.random.rand(1, 5, 5, 4).astype(np.float32)
         array[0, :, :, 3] = 0.5  # Alpha channel
         normalized = normalize_batch(array, mode="imagenet_stats")
         
-        # Alpha channel should be preserved
+        # Alpha channel should be preserved (already in [0, 1])
         assert np.allclose(normalized[..., 3:4], array.astype(np.float64)[..., 3:4])
         # RGB should be normalized
         assert normalized[..., :3].dtype == np.float64
+        
+        # Test with uint8 array (alpha should be scaled by 255)
+        array_uint8 = np.zeros((1, 5, 5, 4), dtype=np.uint8)
+        array_uint8[0, :, :, :3] = np.random.randint(0, 255, (5, 5, 3))
+        array_uint8[0, :, :, 3] = 200  # Alpha channel
+        normalized_uint8 = normalize_batch(array_uint8, mode="imagenet_stats")
+        
+        # Alpha channel should be scaled to [0, 1] (200/255)
+        expected_alpha = 200.0 / 255.0
+        assert np.allclose(normalized_uint8[..., 3:4], expected_alpha)
+        assert np.all(normalized_uint8[..., 3:4] >= 0.0) and np.all(normalized_uint8[..., 3:4] <= 1.0)
 
     def test_normalize_imagenet_stats_grayscale_raises_error(self):
         """Test that ImageNet stats normalization raises error for grayscale."""

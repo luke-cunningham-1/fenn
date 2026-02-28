@@ -64,7 +64,7 @@ def _normalize_0_1(array: np.ndarray) -> np.ndarray:
     the minimum becomes 0 and the maximum becomes 1. Formula: (x - min) / (max - min).
     
     If an image has constant values (min == max), it will be set to 0.5.
-    All channels (including alpha) are normalized using the same min/max strategy.
+    For RGBA images, alpha channel is scaled by dtype max (not min/max normalized).
     
     Args:
         array: Input array with batch dimension
@@ -78,7 +78,69 @@ def _normalize_0_1(array: np.ndarray) -> np.ndarray:
     format_info = detect_format(array)
     channel_location = format_info["channel_location"]
     
-    # Normalize all channels using the same strategy
+    # Check if this is RGBA (4 channels)
+    is_rgba = False
+    if channel_location == "last" and array.shape[3] == 4:
+        is_rgba = True
+    elif channel_location == "first" and array.shape[1] == 4:
+        is_rgba = True
+    
+    if is_rgba:
+        # For RGBA: normalize RGB using min/max, scale alpha by dtype max
+        if channel_location == "last":
+            rgb_channels = array_float[..., :3]
+            alpha_channel = array_float[..., 3:4]
+            
+            # Normalize RGB using min/max
+            min_vals = np.min(rgb_channels, axis=(1, 2), keepdims=True)
+            max_vals = np.max(rgb_channels, axis=(1, 2), keepdims=True)
+            range_vals = max_vals - min_vals
+            normalized_rgb = np.where(
+                range_vals > 0,
+                (rgb_channels - min_vals) / range_vals,
+                0.5
+            )
+            
+            # Scale alpha by dtype max
+            if np.issubdtype(array.dtype, np.integer):
+                dtype_max = np.iinfo(array.dtype).max
+                normalized_alpha = alpha_channel / dtype_max
+            else:
+                # Float type: if > 1, assume [0, 255] range, else already normalized
+                if alpha_channel.max() > 1.0:
+                    normalized_alpha = alpha_channel / 255.0
+                else:
+                    normalized_alpha = alpha_channel
+            
+            return np.concatenate([normalized_rgb, normalized_alpha], axis=-1)
+        else:  # channels first
+            rgb_channels = array_float[:, :3, ...]
+            alpha_channel = array_float[:, 3:4, ...]
+            
+            # Normalize RGB using min/max
+            min_vals = np.min(rgb_channels, axis=(2, 3), keepdims=True)
+            max_vals = np.max(rgb_channels, axis=(2, 3), keepdims=True)
+            range_vals = max_vals - min_vals
+            normalized_rgb = np.where(
+                range_vals > 0,
+                (rgb_channels - min_vals) / range_vals,
+                0.5
+            )
+            
+            # Scale alpha by dtype max
+            if np.issubdtype(array.dtype, np.integer):
+                dtype_max = np.iinfo(array.dtype).max
+                normalized_alpha = alpha_channel / dtype_max
+            else:
+                # Float type: if > 1, assume [0, 255] range, else already normalized
+                if alpha_channel.max() > 1.0:
+                    normalized_alpha = alpha_channel / 255.0
+                else:
+                    normalized_alpha = alpha_channel
+            
+            return np.concatenate([normalized_rgb, normalized_alpha], axis=1)
+    
+    # Normalize all channels using the same strategy (non-RGBA case)
     if channel_location == "first":
         min_vals = np.min(array_float, axis=(2, 3), keepdims=True)
         max_vals = np.max(array_float, axis=(2, 3), keepdims=True)
@@ -102,7 +164,7 @@ def _normalize_minus1_1(array: np.ndarray) -> np.ndarray:
     the minimum becomes -1 and the maximum becomes 1. Formula: 2 * (x - min) / (max - min) - 1.
     
     If an image has constant values (min == max), it will be set to 0.0.
-    All channels (including alpha) are normalized using the same min/max strategy.
+    For RGBA images, alpha channel is scaled by dtype max, then mapped to [-1, 1].
     
     Args:
         array: Input array with batch dimension
@@ -116,7 +178,71 @@ def _normalize_minus1_1(array: np.ndarray) -> np.ndarray:
     format_info = detect_format(array)
     channel_location = format_info["channel_location"]
     
-    # Normalize all channels using the same strategy
+    # Check if this is RGBA (4 channels)
+    is_rgba = False
+    if channel_location == "last" and array.shape[3] == 4:
+        is_rgba = True
+    elif channel_location == "first" and array.shape[1] == 4:
+        is_rgba = True
+    
+    if is_rgba:
+        # For RGBA: normalize RGB using min/max, scale alpha by dtype max then to [-1, 1]
+        if channel_location == "last":
+            rgb_channels = array_float[..., :3]
+            alpha_channel = array_float[..., 3:4]
+            
+            # Normalize RGB using min/max
+            min_vals = np.min(rgb_channels, axis=(1, 2), keepdims=True)
+            max_vals = np.max(rgb_channels, axis=(1, 2), keepdims=True)
+            range_vals = max_vals - min_vals
+            normalized_rgb = np.where(
+                range_vals > 0,
+                2.0 * (rgb_channels - min_vals) / range_vals - 1.0,
+                0.0
+            )
+            
+            # Scale alpha by dtype max, then to [-1, 1]
+            if np.issubdtype(array.dtype, np.integer):
+                dtype_max = np.iinfo(array.dtype).max
+                normalized_alpha = 2.0 * (alpha_channel / dtype_max) - 1.0
+            else:
+                # Float type: if > 1, assume [0, 255] range, else already in [0, 1]
+                if alpha_channel.max() > 1.0:
+                    normalized_alpha = 2.0 * (alpha_channel / 255.0) - 1.0
+                else:
+                    # Already in [0, 1], map to [-1, 1]
+                    normalized_alpha = 2.0 * alpha_channel - 1.0
+            
+            return np.concatenate([normalized_rgb, normalized_alpha], axis=-1)
+        else:  # channels first
+            rgb_channels = array_float[:, :3, ...]
+            alpha_channel = array_float[:, 3:4, ...]
+            
+            # Normalize RGB using min/max
+            min_vals = np.min(rgb_channels, axis=(2, 3), keepdims=True)
+            max_vals = np.max(rgb_channels, axis=(2, 3), keepdims=True)
+            range_vals = max_vals - min_vals
+            normalized_rgb = np.where(
+                range_vals > 0,
+                2.0 * (rgb_channels - min_vals) / range_vals - 1.0,
+                0.0
+            )
+            
+            # Scale alpha by dtype max, then to [-1, 1]
+            if np.issubdtype(array.dtype, np.integer):
+                dtype_max = np.iinfo(array.dtype).max
+                normalized_alpha = 2.0 * (alpha_channel / dtype_max) - 1.0
+            else:
+                # Float type: if > 1, assume [0, 255] range, else already in [0, 1]
+                if alpha_channel.max() > 1.0:
+                    normalized_alpha = 2.0 * (alpha_channel / 255.0) - 1.0
+                else:
+                    # Already in [0, 1], map to [-1, 1]
+                    normalized_alpha = 2.0 * alpha_channel - 1.0
+            
+            return np.concatenate([normalized_rgb, normalized_alpha], axis=1)
+    
+    # Normalize all channels using the same strategy (non-RGBA case)
     if channel_location == "first":
         min_vals = np.min(array_float, axis=(2, 3), keepdims=True)
         max_vals = np.max(array_float, axis=(2, 3), keepdims=True)
@@ -137,7 +263,7 @@ def _normalize_imagenet_stats(array: np.ndarray) -> np.ndarray:
     Normalize array using ImageNet statistics.
     
     Uses mean=[0.485, 0.456, 0.406] and std=[0.229, 0.224, 0.225] for RGB channels (standard imagenet values).
-    For RGBA images, alpha channel is normalized using z-score (its own mean/std) to match the normalization strategy.
+    For RGBA images, alpha channel is scaled to [0, 1] by dtype max (not normalized with ImageNet stats).
     Assumes RGB format with channels last (N, H, W, 3) or channels first (N, 3, H, W).
     Formula: (x - mean) / std, applied per channel.
     
@@ -167,66 +293,90 @@ def _normalize_imagenet_stats(array: np.ndarray) -> np.ndarray:
     elif channel_location == "first" and array.shape[1] == 4:
         is_rgba = True
     
-    # Auto-normalize to [0, 1] if values are outside expected [0, 1] range
-    array_max = array_float.max()
-    array_min = array_float.min()
-    
-    if array_min < 0.0:
-        # Values are < 0, likely in [-1, 1] range
-        if array_max <= 1.0:
-            # Scale from [-1, 1] to [0, 1]: (x + 1) / 2
-            array_float = (array_float + 1.0) / 2.0
-        else:
-            # If max > 1 and min < 0, weird range - just divide by max
-            array_float = array_float / array_max
-    elif array_max > 1.0:
-        # Values are > 1, need to normalize
-        if np.issubdtype(array.dtype, np.integer):
-            # Integer types: divide by dtype max (e.g., uint8 -> divide by 255)
-            dtype_max = np.iinfo(array.dtype).max
-            array_float = array_float / dtype_max
-        else:
-            # Float types: assume [0, 255] range and divide by 255
-            array_float = array_float / 255.0
+    # For RGBA, extract alpha before auto-normalization to handle separately
+    if is_rgba:
+        if channel_location == "last":
+            rgb_channels_float = array_float[..., :3]
+            alpha_channel_original = array_float[..., 3:4].copy()
+        else:  # channels first
+            rgb_channels_float = array_float[:, :3, ...]
+            alpha_channel_original = array_float[:, 3:4, ...].copy()
+        
+        # Auto-normalize only RGB channels to [0, 1] if needed
+        rgb_max = rgb_channels_float.max()
+        rgb_min = rgb_channels_float.min()
+        
+        if rgb_min < 0.0:
+            if rgb_max <= 1.0:
+                rgb_channels_float = (rgb_channels_float + 1.0) / 2.0
+            else:
+                rgb_channels_float = rgb_channels_float / rgb_max
+        elif rgb_max > 1.0:
+            if np.issubdtype(array.dtype, np.integer):
+                dtype_max = np.iinfo(array.dtype).max
+                rgb_channels_float = rgb_channels_float / dtype_max
+            else:
+                rgb_channels_float = rgb_channels_float / 255.0
+    else:
+        # Auto-normalize entire array to [0, 1] if values are outside expected [0, 1] range
+        array_max = array_float.max()
+        array_min = array_float.min()
+        
+        if array_min < 0.0:
+            # Values are < 0, likely in [-1, 1] range
+            if array_max <= 1.0:
+                # Scale from [-1, 1] to [0, 1]: (x + 1) / 2
+                array_float = (array_float + 1.0) / 2.0
+            else:
+                # If max > 1 and min < 0, weird range - just divide by max
+                array_float = array_float / array_max
+        elif array_max > 1.0:
+            # Values are > 1, need to normalize
+            if np.issubdtype(array.dtype, np.integer):
+                # Integer types: divide by dtype max (e.g., uint8 -> divide by 255)
+                dtype_max = np.iinfo(array.dtype).max
+                array_float = array_float / dtype_max
+            else:
+                # Float types: assume [0, 255] range and divide by 255
+                array_float = array_float / 255.0
     
     if is_rgba:
-        # For RGBA: apply ImageNet stats to RGB, z-score to alpha
+        # For RGBA: apply ImageNet stats to RGB, scale alpha to [0, 1] by dtype max
+        # Apply ImageNet stats to RGB
         if channel_location == "last":
-            rgb_channels = array_float[..., :3]
-            alpha_channel = array_float[..., 3:4]
-            
-            # Apply ImageNet stats to RGB
             mean_broadcast = imagenet_mean.reshape(1, 1, 1, 3)
             std_broadcast = imagenet_std.reshape(1, 1, 1, 3)
-            normalized_rgb = (rgb_channels - mean_broadcast) / std_broadcast
+            normalized_rgb = (rgb_channels_float - mean_broadcast) / std_broadcast
             
-            # Normalize alpha using z-score (same strategy as RGB, but with alpha's own stats)
-            alpha_mean = np.mean(alpha_channel, axis=(1, 2), keepdims=True)
-            alpha_std = np.std(alpha_channel, axis=(1, 2), keepdims=True)
-            normalized_alpha = np.where(
-                alpha_std > 0,
-                (alpha_channel - alpha_mean) / alpha_std,
-                0.0
-            )
+            # Scale alpha to [0, 1] by dtype max
+            if np.issubdtype(array.dtype, np.integer):
+                dtype_max = np.iinfo(array.dtype).max
+                normalized_alpha = alpha_channel_original / dtype_max
+            else:
+                # Float type: if > 1, assume [0, 255] range, else already in [0, 1]
+                if alpha_channel_original.max() > 1.0:
+                    normalized_alpha = alpha_channel_original / 255.0
+                else:
+                    # Already in [0, 1], preserve as-is
+                    normalized_alpha = alpha_channel_original
             
             return np.concatenate([normalized_rgb, normalized_alpha], axis=-1)
         else:  # channels first
-            rgb_channels = array_float[:, :3, ...]
-            alpha_channel = array_float[:, 3:4, ...]
-            
-            # Apply ImageNet stats to RGB
             mean_broadcast = imagenet_mean.reshape(1, 3, 1, 1)
             std_broadcast = imagenet_std.reshape(1, 3, 1, 1)
-            normalized_rgb = (rgb_channels - mean_broadcast) / std_broadcast
+            normalized_rgb = (rgb_channels_float - mean_broadcast) / std_broadcast
             
-            # Normalize alpha using z-score (same strategy as RGB, but with alpha's own stats)
-            alpha_mean = np.mean(alpha_channel, axis=(2, 3), keepdims=True)
-            alpha_std = np.std(alpha_channel, axis=(2, 3), keepdims=True)
-            normalized_alpha = np.where(
-                alpha_std > 0,
-                (alpha_channel - alpha_mean) / alpha_std,
-                0.0
-            )
+            # Scale alpha to [0, 1] by dtype max
+            if np.issubdtype(array.dtype, np.integer):
+                dtype_max = np.iinfo(array.dtype).max
+                normalized_alpha = alpha_channel_original / dtype_max
+            else:
+                # Float type: if > 1, assume [0, 255] range, else already in [0, 1]
+                if alpha_channel_original.max() > 1.0:
+                    normalized_alpha = alpha_channel_original / 255.0
+                else:
+                    # Already in [0, 1], preserve as-is
+                    normalized_alpha = alpha_channel_original
             
             return np.concatenate([normalized_rgb, normalized_alpha], axis=1)
     
@@ -258,7 +408,7 @@ def _normalize_zscore(array: np.ndarray) -> np.ndarray:
     the mean becomes 0 and the standard deviation becomes 1. Formula: (x - mean) / std.
     
     If an image has constant values (std == 0), it will be set to zeros.
-    All channels (including alpha) are normalized using the same z-score strategy.
+    For RGBA images, alpha channel is scaled to [0, 1] by dtype max (not z-score normalized).
     
     Args:
         array: Input array with batch dimension
@@ -272,7 +422,69 @@ def _normalize_zscore(array: np.ndarray) -> np.ndarray:
     format_info = detect_format(array)
     channel_location = format_info["channel_location"]
     
-    # Normalize all channels using the same strategy
+    # Check if this is RGBA (4 channels)
+    is_rgba = False
+    if channel_location == "last" and array.shape[3] == 4:
+        is_rgba = True
+    elif channel_location == "first" and array.shape[1] == 4:
+        is_rgba = True
+    
+    if is_rgba:
+        # For RGBA: z-score normalize RGB, scale alpha to [0, 1] by dtype max
+        if channel_location == "last":
+            rgb_channels = array_float[..., :3]
+            alpha_channel = array_float[..., 3:4]
+            
+            # Z-score normalize RGB
+            mean_vals = np.mean(rgb_channels, axis=(1, 2), keepdims=True)
+            std_vals = np.std(rgb_channels, axis=(1, 2), keepdims=True)
+            normalized_rgb = np.where(
+                std_vals > 0,
+                (rgb_channels - mean_vals) / std_vals,
+                0.0
+            )
+            
+            # Scale alpha to [0, 1] by dtype max (if integer) or preserve if already normalized
+            if np.issubdtype(array.dtype, np.integer):
+                dtype_max = np.iinfo(array.dtype).max
+                normalized_alpha = alpha_channel / dtype_max
+            else:
+                # Float type: if > 1, assume [0, 255] range, else already in [0, 1]
+                if alpha_channel.max() > 1.0:
+                    normalized_alpha = alpha_channel / 255.0
+                else:
+                    # Already in [0, 1], preserve as-is
+                    normalized_alpha = alpha_channel
+            
+            return np.concatenate([normalized_rgb, normalized_alpha], axis=-1)
+        else:  # channels first
+            rgb_channels = array_float[:, :3, ...]
+            alpha_channel = array_float[:, 3:4, ...]
+            
+            # Z-score normalize RGB
+            mean_vals = np.mean(rgb_channels, axis=(2, 3), keepdims=True)
+            std_vals = np.std(rgb_channels, axis=(2, 3), keepdims=True)
+            normalized_rgb = np.where(
+                std_vals > 0,
+                (rgb_channels - mean_vals) / std_vals,
+                0.0
+            )
+            
+            # Scale alpha to [0, 1] by dtype max (if integer) or preserve if already normalized
+            if np.issubdtype(array.dtype, np.integer):
+                dtype_max = np.iinfo(array.dtype).max
+                normalized_alpha = alpha_channel / dtype_max
+            else:
+                # Float type: if > 1, assume [0, 255] range, else already in [0, 1]
+                if alpha_channel.max() > 1.0:
+                    normalized_alpha = alpha_channel / 255.0
+                else:
+                    # Already in [0, 1], preserve as-is
+                    normalized_alpha = alpha_channel
+            
+            return np.concatenate([normalized_rgb, normalized_alpha], axis=1)
+    
+    # Normalize all channels using the same strategy (non-RGBA case)
     if channel_location == "first":
         mean_vals = np.mean(array_float, axis=(2, 3), keepdims=True)
         std_vals = np.std(array_float, axis=(2, 3), keepdims=True)
